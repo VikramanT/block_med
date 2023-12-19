@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Record System</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #000;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+
+    h1 {
+      color: #fff;
+    }
+
+    div {
+      background-color: #fff;
+      padding: 20px;
+      margin: 20px auto;
+      max-width: 600px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #4caf50;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    button.delete-btn {
+      background-color: #e74c3c;
+      color: #fff;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button.delete-btn:hover {
+      background-color: #c0392b;
+    }
+  </style>
+
+</head>
+<body>
+  <h1>Health Record System</h1>
+
+  <div>
+    <h2>Create Health Record</h2>
+    <label for="patientName">Patient Name:</label>
+    <input type="text" id="patientName" placeholder="Enter patient name">
+    <br>
+    <label for="diagnosis">Diagnosis:</label>
+    <input type="text" id="diagnosis" placeholder="Enter diagnosis">
+    <br>
+    <button onclick="createHealthRecord()">Create Health Record</button>
+  </div>
+
+  <div>
+    <h2>Health Records</h2>
+    <ul id="healthRecordsList"></ul>
+  </div>
+
+
+  <!-- Load the web3.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+  <script>
+    let contract; // Declare contract in the global scope
+
+    // Function definition in the global scope
+    async function createHealthRecord() {
+      if (!contract) {
+        console.error('Contract not initialized. Please wait and try again.');
+        return;
+      }
+    
+      const patientName = document.getElementById('patientName').value;
+      const diagnosis = document.getElementById('diagnosis').value;
+    
+      if (!patientName || !diagnosis) {
+        alert('Please enter patient name and diagnosis');
+        return;
+      }
+    
+      const accounts = await web3.eth.getAccounts();
+    
+      try {
+        console.log('Creating Health Record. Patient Name:', patientName, 'Diagnosis:', diagnosis);
+        const transaction = await contract.methods.createHealthRecord(patientName, diagnosis, Date.now(), accounts[0]).send({ from: accounts[0], gas: 5000000 });
+    
+        // Wait for transaction receipt
+        const receipt = await web3.eth.getTransactionReceipt(transaction.transactionHash);
+    
+        if (receipt.status) {
+          alert('Health Record created successfully');
+          console.log('Transaction Hash:', transaction.transactionHash);
+    
+          // Introduce a delay (e.g., 2 seconds) before updating the list
+          setTimeout(() => {
+            updateHealthRecordsList();
+          }, 2000);
+        } else {
+          console.error('Transaction failed');
+          alert('Error creating Health Record');
+        }
+      } catch (error) {
+        console.error('Error creating Health Record:', error);
+        alert('Error creating Health Record');
+      }
+    }
+    // Function definition for deleting a health record
+async function deleteHealthRecord(recordId) {
+  if (!contract) {
+      console.error('Contract not initialized. Please wait and try again.');
+      return;
+  }
+
+  const accounts = await web3.eth.getAccounts();
+
+  try {
+      console.log('Deleting Health Record. Record ID:', recordId);
+      const transaction = await contract.methods.deleteHealthRecord(recordId).send({ from: accounts[0], gas: 5000000 });
+
+      // Wait for transaction receipt
+      const receipt = await web3.eth.getTransactionReceipt(transaction.transactionHash);
+
+      if (receipt.status) {
+          alert('Health Record deleted successfully');
+          console.log('Transaction Hash:', transaction.transactionHash);
+
+          // Introduce a delay (e.g., 2 seconds) before updating the list
+          setTimeout(() => {
+              updateHealthRecordsList();
+          }, 2000);
+      } else {
+          console.error('Transaction failed');
+          alert('Error deleting Health Record');
+      }
+  } catch (error) {
+      console.error('Error deleting Health Record:', error);
+      alert('Error deleting Health Record');
+  }
+}
+
+
+    // Connect to Ganache provider
+    const web3 = new Web3('http://localhost:7545'); // Replace with your Ganache server URL
+
+    // Load ABI from TodoList.json
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', 'TodoList.json', true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState == 4 && xhr.status == 200) {
+        const contractJSON = JSON.parse(xhr.responseText);
+        const contractABI = contractJSON.abi;
+        initApp(contractABI);
+      }
+    };
+    xhr.send();
+
+    // Initialize the application with loaded ABI
+    function initApp(contractABI) {
+      const contractAddress = '0x6fa1Bbc6Bc8cb54e8fa32695092B322AB480C661';
+      contract = new web3.eth.Contract(contractABI, contractAddress);
+
+      // Function to update the list of health records
+     // Function to update the list of health records
+async function updateHealthRecordsList() {
+  const healthRecordsList = document.getElementById('healthRecordsList');
+  healthRecordsList.innerHTML = ''; // Clear previous entries
+
+  const taskCount = await contract.methods.taskCount().call();
+
+  for (let i = 1; i <= taskCount; i++) {
+      const healthRecord = await contract.methods.healthRecords(i).call();
+
+      if (healthRecord.id !== "0") {
+          const listItem = document.createElement('li');
+          listItem.textContent = `ID : ${ healthRecord.id}, Patient: ${healthRecord.patientName}, Diagnosis: ${healthRecord.diagnosis}, Timestamp: ${new Date(healthRecord.timestamp * 1000)}, Doctor: ${healthRecord.doctor}`;
+
+          // Create a "Delete" button for each health record
+          const deleteButton = document.createElement('button');
+          deleteButton.textContent = 'Delete';
+
+          // Use the bind method to pass the healthRecord.id to the deleteHealthRecord function
+          deleteButton.onclick = deleteHealthRecord.bind(null, healthRecord.id);
+
+          listItem.appendChild(deleteButton);
+
+          healthRecordsList.appendChild(listItem);
+      }
+  }
+}
+
+      
+
+      // Initial update of the health records list
+      updateHealthRecordsList();
+    }
+  </script>
+</body>
+</html>
